@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content id="EnhancedBailing" name="EnhancedBailing" description="Bailing Overhaul - Enables NPC v NPC bailing, abandoned ships survive for 30 mins to 4 hours before blowing up"  author="MoonShadowFan" version="130" date="2021-7-10" save="0">
+  <text language="44" name="EnhancedBailing" description="Bailing Overhaul - Enables NPC v NPC bailing, abandoned ships survive for 30 mins to 4 hours before blowing up" author="MoonShadowFan" />
+</content>

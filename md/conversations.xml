@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diff> 
+   <!-- 
+   This has to have the same shield and hull values as you set in notifications.xml
+   -->
+  <replace sel="/mdscript/cues/cue[@name="DefaultComm"]/actions/do_if[@value="typeof event.object == datatype.component"]/set_value[@name="$maysurrender"]">
+	<!-- removed the restriction allowing only s and m ship types to bail -->
+    <set_value name="$maysurrender" exact="$locobject and $locobject.iscapturable and ((not $locobject.maxshield) or ($locobject.shieldpercentage lt 20)) and ($locobject.hullpercentage lt 75) and @event.object.$nextcapturechance lt player.age"/>
+  </replace>
+</diff>

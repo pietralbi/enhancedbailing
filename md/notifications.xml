@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diff xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="C:\Production\X4\Unpacked dat 8\libraries\md.xsd">
+	<!-- 
+	-->
+	<remove sel="/mdscript/cues/cue[@name='Init']/cues/cue[@name='PlayerOwnedShipAttacks']/actions/do_if[@value='$target.iscapturable']"/>
+	<add sel="/mdscript/cues/cue[@name='Init']/cues/cue[@name='PlayerOwnedShipAttacks']/actions/debug_text" pos="after">
+	<!-- MAINTENANCE: keep synced with surrender conditions in md.Conversations.DefaultComm -->
+	<!-- chance that the pilot bails out -->
+	<do_if value="$target.iscapturable">
+		<do_if value="event.name == 'event_cue_signalled'">
+			<set_value name="$Speak_Line" exact="5037" comment="(refusal to surrender - in danger)" />
+		</do_if>
+		<debug_text text="player.age + ' bail: %s initial check: %s shieldpercentage: %s (threshold: 20) hullpercentage: %s (threshold: 75) docked: %s is capitalship: %s has crew: %s'.[$target.knownname, (((not $target.maxshield) or ($target.shieldpercentage lt 20)) and ($target.hullpercentage lt 75) and not $target.assigneddock and (not $target.iscapitalship or $target.people.count)), $target.shieldpercentage, $target.hullpercentage, $target.assigneddock, $target.iscapitalship, $target.people.count]" chance="$debug? * 100"/>
+		<!-- Dismiss ship if it has shields which above 20%, hull above 75%, or is a capital ship with no service personnel on board. -->
+		<do_if value="if not $testcheat? then (((not $target.maxshield) or ($target.shieldpercentage lt 20)) and ($target.hullpercentage lt 75) and not $target.assigneddock and (not $target.iscapitalship or $target.people.count)) else true">
+			<do_if value="not $target.pilot.$nextcapturechance?">
+				<set_value name="$target.pilot.$nextcapturechance" exact="player.age - 1s" />
+			</do_if>
+			<do_if value="if not $testcheat? then ($target.pilot.$nextcapturechance lt player.age) else true">
+				<!-- TODO: chance to reduce morale? -->
+				<!-- response to demand to surrender. reflects the nerve of the captain and his ability to hold the crew together. -->
+				<do_if value="event.name != 'event_cue_signalled' or (($target.people.count)f / ($target.people.capacity)f) lt ((16 - $target.pilot.skill.morale)f / 16.0)">
+					<!-- Complete re-write of bail calculation
+								Base Chance = 10%
+								Lifetime of ship is between minlifetime and maxlife minutes before it is destroyed
+								Crew % increases bail risk by 1-10% - Calculation adds 1 for the pilot
+								Hull and Shield State difference between target and attacker increases risk by 1-10%  - Most likely diff is between 2 and 6
+								Ship Size difference – Do in percent steps - Ignoring Stations to reduce the number of station related bails
+								Pilot Morale reduces chance by up to morale * 2 - so can cancel out bailing for high morale - Pilot Morale seems to be from 1-24 - might need to change this
+								Combat or Civilian Ship - Combat reduces bail chance by half
+								Bailed ship will survive between minlife and maxlife below - currently 30 mins to 4 hours
+						-->
+					<!-- 
+							 HOW TO TRIGGER:
+							 event_cue_signalled: via the surrender option in conversation
+								(but only if #People / #Capacity < 1 - #Morale/16
+							 checks every 5s
+							 (morale is integer between 0 and 15
+						
+							 basechance = 14
+						
+							 remainingcrewchance = 10 *[1 - ((#People + 1) / #Capacity)]
+							 clamped between (0, 10)
+							 
+							 (shieldpercentage is float between 0 and 100)
+							 hullshieldchance = (ATT.shield% + ATT.hull%) / (TAR.shield% + TAR.hull%)
+							 clamped to (~,10)
+							 
+							 sizechance
+							 0 if same class
+							 3.33 ATT class > TAR class + 1
+							 6.66 ATT class > TAR class + 2
+							 10   ATT class > TAR class + 3
+							 
+							 pilotmorale = morale * 2
+							 (max 10)
+							 
+							 ejectchance = basechance + remainingcrewchance + hullshieldchance + sizechance - pilotmorale, minimum 1
+
+							 if M or S  and any of the fighter ships: scout fighter heavyfighter interceptor corvette bomber gunboat scavenger
+							 ejectchance = ejectchance / 2
+							 
+							 if ejectchance is success:
+							 
+							 maxcrewbailing = #people
+							 if is playerowned: maxcrewbailing = #crew or #marines if no crew exist
+							 
+							 if triggered via surrender conversation: numcrewbailing = maxcrewbailing
+							 else:
+								 minbail = #Capacity * 0.2
+								 maxbail = #People * 1.2
+								 if minbail < maxbail: numcrewbailing = rand.unif(minbail, maxbail)
+								 else: numcrewbailing = #People
+								 
+							if hull% < 30, 25% chance for numcrewbailing = #People
+							
+							if Large Military Ships, pilot does not bail: numcrewbailing + #People - 1
+							except for rare 1% chance
+							
+							
+						-->
+					<set_value name="$basechance" exact="14"/>
+					<set_value name="$minlifetime" exact="30min"/>
+					<set_value name="$maxlifetime" exact="240min"/>
+					<set_value name="$remainingcrewchance" exact="[[10 - ((($target.people.count + 1)f / ($target.people.capacity)f) * 10.0), 0.0].max, 10.0].min"/>
+					<!--set_value name="$remainingcrewchance" exact="if ($remainingcrewchance lt 0) then 0 else $remainingcrewchance"/>
+						<set_value name="$remainingcrewchance" exact="if ($remainingcrewchance gt 10) then 10 else $remainingcrewchance"/-->
+					<set_value name="$hullshieldchance" exact="[($attacker.shieldpercentage + $attacker.hullpercentage) / [($target.shieldpercentage + $target.hullpercentage), 1.0].max, 10.0].min"/>
+					<!--set_value name="$hullshieldchance" exact="if ($hullshieldchance gt 10) then 10 else $hullshieldchance"/-->
+					<set_value name="$sizechance" exact="0"/>
+					<do_if value="($attacker.isclass.[class.ship_xl] and $target.isclass.[class.ship_xl]) or ($attacker.isclass.[class.ship_l] and $target.isclass.[class.ship_l]) or  ($attacker.isclass.[class.ship_m] and $target.isclass.[class.ship_m]) or ($attacker.isclass.[class.ship_s] and $target.isclass.[class.ship_s]) or ($attacker.isclass.[class.ship_xs] and $target.isclass.[class.ship_xs])">
+						<set_value name="$sizechance" exact="0"/>
+					</do_if>
+					<do_if value="($attacker.isclass.[class.ship_xl] and $target.isclass.[class.ship_l]) or ($attacker.isclass.[class.ship_l] and $target.isclass.[class.ship_m]) or ($attacker.isclass.[class.ship_m] and ($target.isclass.[class.ship_s] or $target.isclass.[class.ship_xs]))">
+						<set_value name="$sizechance" exact="3.33"/>
+					</do_if>
+					<do_if value="($attacker.isclass.[class.ship_xl] and $target.isclass.[class.ship_m]) or ($attacker.isclass.[class.ship_l] and ($target.isclass.[class.ship_s] or $target.isclass.[class.ship_xs]))">
+						<set_value name="$sizechance" exact="6.66"/>
+					</do_if>
+					<do_if value="($attacker.isclass.[class.ship_xl] and ($target.isclass.[class.ship_s] or $target.isclass.[class.ship_xs]))">
+						<set_value name="$sizechance" exact="10.0"/>
+					</do_if>
+					<set_value name="$pilotmorale" exact="$target.pilot.skill.morale * 2"/>
+
+					<set_value name="$ejectchance" exact="[($basechance + $remainingcrewchance + $hullshieldchance + $sizechance - $pilotmorale)i, 1].max"/>
+					<!--do_if value="$ejectchance le 0">
+							<set_value name="$ejectchance" exact="1"/>
+						</do_if-->
+
+					<!-- If target is small or medium combat ship then reduce the bail chance by 50%  - Capitals are taken care of below-->
+					<do_if value="[shiptype.scout, shiptype.fighter, shiptype.heavyfighter, shiptype.interceptor, shiptype.corvette, shiptype.bomber, shiptype.gunboat,shiptype.scavenger ].indexof.{$target.type} and ($target.isclass.[class.ship_m] or $target.isclass.[class.ship_s] or $target.isclass.[class.ship_xs])">
+						<set_value name="$ejectchance" exact="[$ejectchance / 2, 1].max"/>
+					</do_if>
+
+					<debug_text text="player.age + ' %s %s %s attacking %s %s %s. in %s  eject chance %s. crew chance : %s, relative damage chance: %s, size chance: %s, Target Morale: %s'.[$attacker.idcode, $attacker.knownname, $attacker, $target.idcode, $target.knownname, $target, $target.pilot.sector.knownname, $ejectchance, $remainingcrewchance, $hullshieldchance, $sizechance, $pilotmorale]" chance="$debug? * 100"/>
+
+					<do_if value="true" chance="if not $testcheat? then $ejectchance else 100">
+						<set_value name="$maxcrewbailing" exact="$target.people.count"/>
+						<do_if value="$target.isplayerowned">
+							<set_value name="$bail_role" exact="entityrole.service"/>
+							<do_if value="not $target.people.{entityrole.service}.{0}.count">
+								<set_value name="$bail_role" exact="entityrole.marine"/>
+							</do_if>
+							<set_value name="$maxcrewbailing" exact="$target.people.{$bail_role}.{0}.count"/>
+						</do_if>
+
+						<do_if value="event.name == 'event_cue_signalled'">
+							<set_value name="$numcrewbailing" exact="$maxcrewbailing"/>
+						</do_if>
+						<do_else>
+							<!-- Make the max bail value between 1 and the ships maximum number of crew members -->
+							<!-- Added a minimum bail (in maxbail calc) to be 20% of the total crew - otherwise too many interations of a small percent of crew bail and in lage crew this lead to no pilot bail -->
+							<!-- Make the number of bailing crew to be value between 20% of the ships capacity and 110% of the current ship crew - NOT the number of crew, otherwise we will mostly end up needing multiple passes to abandon every time, if crew is low then abandon rate is higher -->
+							<set_value name="$minbail"  exact="[($target.people.capacity * 0.2)i,1].max"/>
+							<set_value name="$maxbail"  exact="($target.people.count * 1.2)i"/>
+							<do_if value="$minbail lt $maxbail">
+								<set_value name="$numcrewbailing" min="$minbail" max="$maxbail"/>
+								<set_value name="$numcrewbailing" exact="[$numcrewbailing, $target.people.count].min"/>
+							</do_if>
+							<do_else>
+								<set_value name="$numcrewbailing" exact="$target.people.count"/>
+							</do_else>
+							<!--do_if value="$numcrewbailing gt $target.people.count">
+									<set_value name="$numcrewbailing" exact="$target.people.count"/>
+								</do_if-->
+							<debug_text text="player.age + ' Capacity = ' + $target.people.capacity + ' Current Crew =' + $target.people.count + ' Num Bailing =' + $numcrewbailing + ' Min Bail =' + $minbail + ' Max Bail =' + $maxbail" chance="$debug? * 100"/>
+						</do_else>
+
+						<!-- Set a small chance for critical damage if the hull is less than 30% -->
+						<set_value name="$chanceforfullbail" min="1" max="100"/>
+						<do_if value="$target.hullpercentage lt 30 and $chanceforfullbail gt 75">
+							<debug_text text="'Critical Damage Full Crew Bail Triggered ' + $target.knownname" chance="$debug? * 100"/>
+							<set_value name="$numcrewbailing"  exact=" $target.people.count"/>
+						</do_if>
+
+						<!-- Large Military Ships do not normally bail so stop the pilot bailing but add in a 1% chance that the pilot does bail -->
+						<do_if value="[shiptype.scavenger, shiptype.destroyer, shiptype.frigate, shiptype.carrier, shiptype.battleship, shiptype.resupplier].indexof.{$target.type} and ($numcrewbailing ge $target.people.count) and ($target.isclass.[class.ship_xl] or $target.isclass.[class.ship_l])">
+							<debug_text text="player.age + ' Large Military Ship detected preventing pilot bail'" chance="$debug? * 100"/>
+							<set_value name="$numcrewbailing" exact="$target.people.count - 1"/>
+							<!-- Add a 1% chance of a capital bail -->
+							<do_if value="true" chance="1">
+								<debug_text text="'Critical Damage Capital Bail Triggered ' + $target.knownname" chance="$debug? * 100"/>
+								<set_value name="$numcrewbailing" exact="$target.people.count"/>
+							</do_if>
+						</do_if>
+
+						<!-- <do_if value="($numcrewbailing ge $target.people.count) and not $target.iscapitalship and not $target.isplayerowned and ($attacker.isplayerowned or @$attacker.signal.{'foundabandonedship'}.response.id == 'claim')"> -->
+						<do_if value="($numcrewbailing ge $target.people.count) and not $target.isplayerowned">
+							<!-- pilot and remaining crew all bail -->
+							<set_value name="$pilotbail"/>
+							<!-- <set_value name="$damageminpercent" exact="100 - $target.pilot.combinedskill"/> -->
+							<do_if value="$attacker == player.occupiedship">
+								<set_value name="$Speak_Line" exact="10034" />
+							</do_if>
+						</do_if>
+						<set_value name="$eject"/>
+					</do_if>
+
+					<do_if value="not @$pilotbail">
+						<!-- increment nextcapturechance regardless of whether any crew bails unless the pilot is set to bail, but only if ejectchance is actually evaluated. -->
+						<set_value name="$target.pilot.$nextcapturechance" exact="player.age + 5s" />
+						<debug_text text="'next chance ' + $target.pilot.$nextcapturechance" chance="$debug? * 100" />
+					</do_if>
+				</do_if>
+			</do_if>
+		</do_if>
+
+		<do_if value="$Speak_Line? and ($target.owner != faction.xenon) and ($target.owner != faction.khaak)">
+			<do_if value="event.name == 'event_cue_signalled' and player.isinconversation">
+				<!-- Add NPC response for 'g_surrender' conversation section -->
+				<add_npc_line line="$Speak_Line"/>
+			</do_if>
+			<do_else>
+				<speak actor="$target.pilot" line="$Speak_Line" />
+			</do_else>
+		</do_if>
+
+		<do_if value="$eject?">
+			<debug_text text="'%s crew are about to bail from %s %s %s %s'.[$numcrewbailing, $target.class, $target.idcode, $target.knownname, $target]" chance="$debug? * 100"/>
+			<do_if value="$bail_role?">
+				<debug_text text="'bailing from %s %s %s.\nattacker: %s %s %s\nbailing: %s %s\nnum crew of role: %s'.[@$target.idcode, @$target.knownname, $target, @$attacker.idcode, @$attacker.knownname, $attacker, $numcrewbailing, $bail_role, $target.people.{$bail_role}.{0}.count]" chance="$debug? * 100"/>
+				<eject_people object="$target" attacker="$attacker" max="$numcrewbailing" role="$bail_role" level="0"/>
+			</do_if>
+			<do_else>
+				<eject_people object="$target" attacker="$attacker" max="$numcrewbailing"/>
+			</do_else>
+			<remove_value name="$numcrewbailing"/>
+
+			<do_if value="$pilotbail?">
+				<set_value name="$scuttle" exact="not @$target.pilot.$donotscuttle"/>
+				<do_if value="$attacker.isplayerowned">
+					<substitute_text text="$logtext" source="{1016,79}" comment="Forced pilot to leave ship $SHIP$ in sector $SECTOR$.">
+						<replace string="'$SHIP$'" with="$target.knownname" />
+						<replace string="'$SECTOR$'" with="$target.pilot.sector.knownname" />
+					</substitute_text>
+					<write_to_logbook category="upkeep" title="$logtext" interaction="showonmap" object="$target"/>
+					<signal_objects object="player.entity" param="'player_owned_forced_bail'" param2="$target" param3="$attacker"/>
+				</do_if>
+
+				<!-- Check for an advanced satellite in the sector and show warning and logbook entry if one exists -->
+				<set_value name="$currentsector" exact="$target.pilot.sector"/>
+				<find_object owner="faction.player" functional="true" name="$sat" space="$currentsector">
+					<match_any>
+						<match macro="macro.eq_arg_satellite_02_macro"/>
+					</match_any>
+				</find_object>
+				<!-- If we find one then send message to player and log in logbook -->
+				<do_if value="$sat">
+					<debug_text text="'Advanced Satellite present in sector send log to Player'" chance="$debug? * 100"/>
+					<!-- <set_value name="$abandontext" exact="'Satellite detected ship %s abandoned in sector %s'.[$target.knownname, $target.pilot.sector.knownname]"/> -->
+					<set_value name="$abandontext" exact="'Satellite detected ship abandoned in sector %s'.[$target.pilot.sector.knownname]"/>
+					<play_sound object="player.entity" sound="'notification_danger'"/>
+					<show_notification text="$abandontext" timeout="10s"/>
+					<write_to_logbook category="alerts" text="$abandontext" interaction="showonmap" object="$target"/>
+				</do_if>
+
+				<debug_text text="'pilot about to bail from %s %s %s %s'.[$target.class, $target.idcode, $target.knownname, $target]" chance="$debug? * 100"/>
+
+				<do_if value="$target.iscommandeered">
+					<release_commandeered_object object="$target"/>
+				</do_if>
+				<create_order id="'Wait'" object="$target" default="true">
+					<param name="allowdocked" value="not $target.iscapitalship"/>
+				</create_order>
+				<cancel_all_orders object="$target"/>
+				<do_all exact="$target.cargo.count" counter="$i" reverse="true">
+					<set_value name="$removedware" exact="$target.cargo.list.{$i}"/>
+					<set_value name="$removedmaxamount" exact="($target.cargo.{$removedware}.count * ($target.pilot.combinedskill / 100.0))i"/>
+					<debug_text text="'removing from %s to %s out of %s %s. combinedskill: %s'.[($removedmaxamount * 0.8)i, $removedmaxamount, $target.cargo.{$removedware}.count, $removedware.name, $target.pilot.combinedskill]" chance="$debug? * 100"/>
+					<remove_cargo object="$target" ware="$removedware" min="($removedmaxamount * 0.8)i" max="$removedmaxamount"/>
+				</do_all>
+				<cease_fire object="$target"/>
+				<eject_npcs object="$target"/>
+
+				<!-- it's important that integrated subcomponents are destroyed with no explosion. otherwise, they will leave wrecks that the game will not recognize. -->
+				<do_if value="$scuttle and $target.exists">
+					<!-- NB: scuttleeffect defined in defaults.xml -->
+					<add_effect object="$target" effect="$target.scuttleeffect"/>
+					<find_object_component name="$subcomponents" object="$target" class="[class.shieldgenerator, class.turret, class.weapon]" multiple="true">
+						<match tag="tag.mandatory" negate="true" comment="never destroy equipment at connections tagged as mandatory"/>
+					</find_object_component>
+					<!-- <shuffle_list list="$subcomponents"/> -->
+					<!-- <debug_to_file name="'EnhancedBail'" directory="'EnhancedBail'"  text="'Shuffled Components Found in Ship ' + '  ' + $subcomponents"/> -->
+					<do_all exact="$subcomponents.count" counter="$i">
+						<debug_text text="'Component %s'.[$subcomponents.{$i}.knownname]" chance="$debug? * 100"/>
+					</do_all>
+					<!-- Change to allow a more random approach to remaining equipment for each component give a 50% chance of being destroyed -->
+					<do_all exact="$subcomponents.count" counter="$i">
+						<do_if value="true" chance="50">
+							<do_if value="$subcomponents.{$i}.exists">
+								<debug_text text="'destroying %s'.[$subcomponents.{$i}.knownname]" chance="$debug? * 100"/>
+								<destroy_object object="$subcomponents.{$i}" explosion="false"/>
+								<remove_value name="$subcomponents.{$i}"/>
+							</do_if>
+						</do_if>
+					</do_all>
+				</do_if>
+
+				<do_if value="$attacker.isplayerowned">
+					<set_value name="stat.pilots_bailed" operation="add"/>
+				</do_if>
+				<remove_value name="$pilotbail"/>
+
+				<!-- Add Bailed Target to abandoned list with a lifetime timeout using parameters defined above	-->
+				<set_value name="$timeincJA" min="player.age + $minlifetime" max="player.age + $maxlifetime"/>
+				<!-- Create list if not instanciated then add Target to the list and Set the ship lifetime to a random value between 5 mins and 1 hour of gametime  - Some ships degrade faster than others and with slower bail rate should even out -->
+				<do_if value="static.$bailListJA?">
+					<append_to_list name="static.$bailListJA" exact="[$target,$timeincJA]" />
+					<debug_text text="player.age + ' : Appending ' + static.$bailListJA.count + ' : ' + $target.knownname + ' in Sector : ' + $target.pilot.sector.knownname + ' - Lifetime = ' + $timeincJA" chance="$debug? * 100"/>
+				</do_if>
+				<do_else>
+					<create_list name="static.$bailListJA"/>
+					<append_to_list name="static.$bailListJA" exact="[$target,$timeincJA]" />
+					<debug_text text="player.age + ': Initializing List : ' + $target.knownname + ' in Sector : ' + $target.pilot.sector.knownname + ' - Lifetime = ' + $timeincJA" chance="$debug? * 100"/>
+				</do_else>
+
+				<do_all exact="static.$bailListJA.count" counter="$i">
+					<debug_text text="player.age + ' Ship lifetime Check : ' + '  ' +$i + '  ' + static.$bailListJA.{$i}.{1} + '  ' + static.$bailListJA.{$i}.{1}.knownname + '  -  ' + static.$bailListJA.{$i}.{2}" chance="$debug? * 100"/>
+				</do_all>
+
+				<!--   Loop through list and check if lifetime exceeded - then destroy ship -->
+				<do_if value="static.$bailListJA.{1}?" >
+					<create_list name="$removeindexJA"/>
+					<do_all exact="static.$bailListJA.count" counter="$i">
+						<do_if value="static.$bailListJA.{$i}.{2} lt player.age">
+							<set_value name="$target" exact="static.$bailListJA.{$i}.{1}" />
+							<do_if value="$target.exists">
+								<do_if value="$target.isplayerowned">
+								</do_if>
+								<do_else>
+									<destroy_object object="$target" explosion="true" />
+								</do_else>
+							</do_if>
+							<append_to_list name="$removeindexJA" exact="$i"/>
+						</do_if>
+					</do_all>
+					<!-- Clear list entries that were destroyed -->
+					<set_value name="$removecounter" exact="0"/>
+					<do_all exact="$removeindexJA.count" counter="$i">
+						<remove_value name="static.$bailListJA.{$removeindexJA.{$i} - $removecounter}"/>
+						<set_value name="$removecounter" exact="$removecounter + 1"/>
+					</do_all>
+				</do_if>
+			</do_if>
+			<remove_value name="$eject"/>
+		</do_if>
+	</do_if>
+	</add>
+</diff>
