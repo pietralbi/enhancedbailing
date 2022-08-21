@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- english -->
+<language>
+	<page id="131145" voice="no">
+		<t id="1">Enhanced bailing</t>
+		<!-- config -->
+		<t id="2">Debug log</t>
+	</page>
+</language>

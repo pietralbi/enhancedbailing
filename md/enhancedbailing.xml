@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="enhancedbailing" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="C:\Production\X4\Unpacked dat 8\libraries\md.xsd">
+	<cues>
+		<cue name="UserSettings" version="1">
+			<conditions>
+				<check_any>
+					<event_cue_signalled />
+					<event_cue_signalled cue="md.Setup.GameStart" />
+					<event_game_loaded />
+				</check_any>
+			</conditions>
+			<actions>
+				<set_value name="UserSettings.$debugChance" exact="0" />
+				<set_value name="UserSettings.$debugChance_bail" exact="0" />
+			</actions>
+		</cue>
+	</cues>
+</mdscript>

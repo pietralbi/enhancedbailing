@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="enhancedbailing_config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="C:\Production\X4\Unpacked dat 8\libraries\md.xsd">
+	<cues>
+		<cue name="StartSMO" instantiate="true">
+			<conditions>
+				<event_cue_signalled cue="md.Simple_Menu_Options.Reloaded"/>
+			</conditions>
+			<actions>
+				<!-- <debug_text text="'signal_cue_instantly ' + @md.Simple_Menu_API.Register_Options_Menu" /> -->
+				<signal_cue_instantly cue="md.Simple_Menu_API.Register_Options_Menu"
+					param="table[
+						$id = 'enhancedbailing_options_menu',
+						$columns = 2,
+						$title = {131145, 1},
+						$onOpen = BuildOptionsMenu
+					]" />
+				<cancel_cue cue="this" />
+			</actions>
+		</cue>
+		<cue name="BuildOptionsMenu" instantiate="true">
+			<conditions>
+				<event_cue_signalled />
+			</conditions>
+			<actions>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Add_Row"/>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Make_Text" param="table[$col=1, $text='']"/>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Add_Row"/>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Make_Text" param="table[$col=1, $text={131145, 2}, $color='Helper.color.red']"/>
+				<signal_cue_instantly
+					cue = "md.Simple_Menu_API.Make_CheckBox"
+					param = "table[
+						$id = 'debugChance',
+						$checked = if md.enhancedbailing.UserSettings.$debugChance == 100 then true else false,
+						$col = 2,
+						$width = 'Helper.standardButtonHeight', $height = 'Helper.standardButtonHeight',
+						$bgColor = 'Helper.color.red',
+						$onClick = OnSMOCheckboxChange
+					]"/>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Add_Row"/>
+				<signal_cue_instantly cue="md.Simple_Menu_API.Make_Text" param="table[$col=1, $text={131145, 2}, $color='Helper.color.red']"/>
+				<signal_cue_instantly
+					cue = "md.Simple_Menu_API.Make_CheckBox"
+					param = "table[
+						$id = 'debugChance_bail',
+						$checked = if md.enhancedbailing.UserSettings.$debugChance_bail == 100 then true else false,
+						$col = 2,
+						$width = 'Helper.standardButtonHeight', $height = 'Helper.standardButtonHeight',
+						$bgColor = 'Helper.color.red',
+						$onClick = OnSMOCheckboxChange
+					]"/>
+			</actions>
+		</cue>
+		<cue name="OnSMOCheckboxChange" instantiate="true">
+			<conditions>
+				<event_cue_signalled />
+			</conditions>
+			<actions>
+				<debug_text text="event.param.$id + ' pre: ' + md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing_config.UserSettings.$debugChance"/>
+				<do_if value="event.param.$id == 'debugChance'">
+					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
+				</do_if>
+				<do_elseif value="event.param.$id == 'debugChance_bail'">
+					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
+				</do_elseif>
+				<do_else>
+					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="event.param.$checked" />
+				</do_else>
+				<debug_text text="event.param.$id + ' post: ' + md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing_config.UserSettings.$debugChance"/>
+				<cancel_cue cue = "this" />
+			</actions>
+		</cue>
+	</cues>
+</mdscript>
