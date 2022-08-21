@@ -55,17 +55,17 @@
 				<event_cue_signalled />
 			</conditions>
 			<actions>
-				<debug_text text="event.param.$id + ' pre: ' + md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing_config.UserSettings.$debugChance"/>
+				<debug_text text="event.param.$id + ' pre: ' + md.enhancedbailing.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing.UserSettings.$debugChance"/>
 				<do_if value="event.param.$id == 'debugChance'">
-					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
+					<set_value name="md.enhancedbailing.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
 				</do_if>
 				<do_elseif value="event.param.$id == 'debugChance_bail'">
-					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
+					<set_value name="md.enhancedbailing.UserSettings.{'$' + event.param.$id}" exact="if event.param.$checked then 100 else 0" />
 				</do_elseif>
 				<do_else>
-					<set_value name="md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" exact="event.param.$checked" />
+					<set_value name="md.enhancedbailing.UserSettings.{'$' + event.param.$id}" exact="event.param.$checked" />
 				</do_else>
-				<debug_text text="event.param.$id + ' post: ' + md.enhancedbailing_config.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing_config.UserSettings.$debugChance"/>
+				<debug_text text="event.param.$id + ' post: ' + md.enhancedbailing.UserSettings.{'$' + event.param.$id}" chance="md.enhancedbailing.UserSettings.$debugChance"/>
 				<cancel_cue cue = "this" />
 			</actions>
 		</cue>

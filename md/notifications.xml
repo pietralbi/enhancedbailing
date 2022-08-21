@@ -295,7 +295,7 @@
 				</do_else>
 
 				<do_all exact="static.$bailListJA.count" counter="$i">
-					<debug_text text="player.age + ' Ship lifetime Check : ' + '  ' +$i + '  ' + static.$bailListJA.{$i}.{1} + '  ' + static.$bailListJA.{$i}.{1}.knownname + '  -  ' + static.$bailListJA.{$i}.{2}" chance="md.enhancedbailing.UserSettings.$debugChance_bail/>
+					<debug_text text="player.age + ' Ship lifetime Check : ' + '  ' +$i + '  ' + static.$bailListJA.{$i}.{1} + '  ' + static.$bailListJA.{$i}.{1}.knownname + '  -  ' + static.$bailListJA.{$i}.{2}" chance="md.enhancedbailing.UserSettings.$debugChance_bail"/>
 				</do_all>
 
 				<!--   Loop through list and check if lifetime exceeded - then destroy ship -->
